@@ -36,9 +36,9 @@ def define_single_model(neurons):
 # Checked
 def crossover_nodes_make2child(population, neurons, weights):
     temp = []
+    a = [weights[z].shape for z in range(0, len(weights))]
     for i in range(0, len(population) - 1, 2):
         models = define_model(2, neurons)
-        a = [weights[z].shape for z in range(0, len(weights))]
         nm1 = [np.empty(a[z]) for z in range(0, len(a))]
         nm2 = [np.empty(a[z]) for z in range(0, len(a))]
         m1 = copy.deepcopy(population[i].get_weights())
@@ -59,6 +59,7 @@ def crossover_nodes_make2child(population, neurons, weights):
         models[1].set_weights(nm2)
         temp.append(models[0])
         temp.append(models[1])
+        del models, m1, m2, nm1, nm2, a
     return temp
 
 
@@ -84,6 +85,7 @@ def mutate_nodes(population, neurons, number_of_mutation):
             # This is working
             m[layers_number][k][neurons_number] = m[layers_number][k][neurons_number] + random_number
     population.set_weights(m)
+    del m
     return population
 
 
@@ -143,29 +145,34 @@ def multiprocess(pool, population, x_test, y_test):
 
 pool = mp.Pool(4)
 
-x = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(1, 2, 3, 4))
-y = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(0,))
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-y_test = y[:40000]
-x_test = x[:40000]
+x_train = x_train.reshape(60000, 784)
+x_test = x_test.reshape(10000, 784)
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+x_train /= 255
+x_test /= 255
 
-y_train = y[40000:50000]
-x_train = x[40000:50000]
 
-generations = 100  # Number of generation algorithm run.
-pop_size = 4
-neurons = [4, 7, 10, 1]
-number_of_mutate_node = 2
+# convert class vectors to binary class matrices
+y_train = keras.utils.to_categorical(y_train, 10)
+y_test = keras.utils.to_categorical(y_test, 10)
+
+generations = 1000  # Number of generation algorithm run.
+pop_size = 50
+neurons = [784, 512, 512, 10]
+number_of_mutate_node = 180
+number_of_child_generate = 1
 
 population = define_model(population_size=pop_size, neurons=neurons)
 sample_weights = population[0].get_weights()
 
 # fit_result = evaluation(population, x_test, y_test)
-fit_result = multiprocess(pool, population, x_test, y_test)
+fit_result = multiprocess(pool, population)
 
 prob_pop = probability(fit_result)
 dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
-
 
 for g in range(0, generations):
     print('The generation number is: ', g + 1)
