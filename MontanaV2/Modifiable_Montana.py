@@ -41,8 +41,8 @@ def define_single_model(neurons):
 # Checked
 def crossover_nodes(population, neurons, weights):
     model = define_single_model(neurons)
+    a = [weights[z].shape for z in range(0, len(weights))]
     for i in range(0, len(population) - 1, 2):
-        a = [weights[z].shape for z in range(0, len(weights))]
         m = [np.empty(a[z]) for z in range(0, len(a))]
         m1 = copy.deepcopy(population[i].get_weights())
         m2 = copy.deepcopy(population[i + 1].get_weights())
@@ -57,6 +57,7 @@ def crossover_nodes(population, neurons, weights):
                         # print('parent 2 selected and weight is:', m2[j][k][h])
                         m[j][k][h] = copy.deepcopy(m2[j][k][h])
         model.set_weights(m)
+        del m, m1, m2, a
     return model
 
 
@@ -84,6 +85,7 @@ def mutate_nodes(population, neurons, number_of_mutation):
             # This is working
             m[layers_number][k][neurons_number] = m1[layers_number][k][neurons_number] + random_number
     model.set_weights(m)
+    del m1, m
     return model
 
 
@@ -118,13 +120,15 @@ def breeding(population, neurons, dicts, num, weights):
     return lit_child
 
 
-def child_val(child, x_test, y_test, dicts, population):
+def child_val(child, x, y, dicts, population, file):
     fit_result = []
     for p in population:
         fit_result.append(dicts[p][0])
     print('The mean of fitness is:', np.mean(fit_result))
     print('The best of fitness is:', np.max(fit_result))
-    child_fit = round(child.evaluate(x_test, y_test, verbose=0)[1], 5)
+    file.write('\nThe mean of fitness is:' + str(np.mean(fit_result)))
+    file.write('\nThe best of fitness is:' + str(np.max(fit_result)))
+    child_fit = round(child.evaluate(x, y, verbose=0)[1], 5)
     child_prob = round(child_fit / (child_fit + np.sum(fit_result) - np.min(fit_result)), 5)
     return [child_fit, child_prob]
 
@@ -139,51 +143,60 @@ def insert_child(dicts, key, values):
     return dicts
 
 
-def multiprocess(pool, population):
-    evaluation_result = pool.starmap(Sequential.evaluate, ((p, x_test, y_test) for p in population))
-    return evaluation_result
+def multiprocess(pool, population, x, y):
+    evaluation_result = pool.starmap(Sequential.evaluate, ((p, x, y) for p in population))
+    return [e[1] for e in evaluation_result]
 
 
-x = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(1, 2, 3, 4))
-y = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(0,))
+pool = mp.Pool(4)
 
-y_test = y[:40000]
-x_test = x[:40000]
+x = genfromtxt("E:\\Work\\GANN\\Data\\mydata4.csv", delimiter=',', skip_header=1, usecols=(2, 3, 4, 5))
+y = genfromtxt("E:\\Work\\GANN\\Data\\mydata4.csv", delimiter=',', skip_header=1, usecols=(1,))
 
-y_train = y[40000:50000]
-x_train = x[40000:50000]
+x_train = x[:60000]
+y_train = y[:60000]
+
+y_test = y[60000:70000]
+x_test = x[60000:70000]
 
 generations = 100  # Number of generation algorithm run.
 pop_size = 50
 neurons = [4, 7, 10, 1]
 number_of_mutate_node = 2
 
+file = open('Montana_Result.txt', 'w')
+print('The initialization started!')
 population = define_model(population_size=pop_size, neurons=neurons)
+print('The initialization is DONE!')
 sample_weights = population[0].get_weights()
 
-fit_result = evaluation(population, x_test, y_test)
-# pool = mp.Pool(4)
-# fit_result = multiprocess(pool, population)
+print('The evaluation started!')
+fit_result = multiprocess(pool, population, x_train, y_train)
+print('The evaluation is DONE!')
 prob_pop = probability(fit_result)
+print('Creating the dictionary.')
 dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
+print('Dictionary Created!')
 
 # for p in population:
-#     if dicts[p][0] == np.max(fit_result):
-#         best_GA = copy.deepcopy(p)
+#     if dicts[p][0] == np.min(fit_result):
+#         worst = copy.deepcopy(p)
 
 for g in range(0, generations):
     print('The generation number is: ', g + 1)
+    file.write('\nThe generation number is:' + str(g + 1))
     child = breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights)
-    child_values = child_val(child, x_test, y_test, dicts, list(dicts.keys()))
+    child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
 
     # Discarding
     for p in list(dicts.keys()):
         if dicts[p][0] == np.min(fit_result):
-            discard_individual(dicts, p)
+            dicts = discard_individual(dicts, p)
     print(child_values)
+    file.write('\nThe child values is:' + str(child_values))
     dicts = insert_child(dicts, child, child_values)
     # Updating Probabilities in Dictionary
     for p in list(dicts.keys()):
         dicts[p][1] = round(dicts[p][0] / np.sum([dicts[p][0] for p in list(dicts.keys())]), 5)
 
-# best_GA.fit(x_train, y_train, epochs=1, validation_split=0.5)
+# worst.fit(x_train, y_train, epochs=1, validation_split=0.2)
