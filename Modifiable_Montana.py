@@ -168,7 +168,7 @@ x_test = x[:40000]
 y_train = y[40000:50000]
 x_train = x[40000:50000]
 
-generations = 1000  # Number of generation algorithm run.
+generations = 100  # Number of generation algorithm run.
 pop_size = 100
 neurons = [4, 10, 20, 1]
 number_of_mutate_node = 22

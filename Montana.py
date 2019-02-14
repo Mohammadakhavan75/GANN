@@ -189,7 +189,7 @@ x_test = x[:40000]
 y_train = y[40000:]
 x_train = x[40000:]
 
-generations = 1000  # Number of generation algorithm run.
+generations = 100  # Number of generation algorithm run.
 pop_size = 50
 neurons = [4, 7, 10, 1]
 # pool = mp.Pool(mp.cpu_count())
