@@ -191,20 +191,24 @@ for g in range(0, generations):
     print('The generation number is: ', g + 1)
     file.write('\nThe generation number is:'+str(g + 1))
     children = []
-    for c in range(0, number_of_child_generate):
+
+    for c in range(number_of_child_generate):
         children.append(breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights))
-    for c in range(0, number_of_child_generate):
-        # Discarding
+
+    for child in children:
+        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
+        fit_result.append(child_values[0])
+        print(child_values)
+        file.write('\nThe child values is:'+str(child_values))
+
+    # Discarding
+    for child in children:
         for p in list(dicts.keys()):
             if dicts[p][0] == np.min(fit_result):
                 fit_result.remove(np.min(fit_result))
                 dicts = discard_individual(dicts, p)
                 break
     for child in children:
-        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
-        fit_result.append(child_values[0])
-        print(child_values)
-        file.write('\nThe child values is:'+str(child_values))
         dicts = insert_child(dicts, child, child_values)
     # Updating Probabilities in Dictionary
     for p in list(dicts.keys()):
