@@ -1,3 +1,8 @@
+#for run on cpu
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
 import numpy as np
 from keras.models import Sequential
 from keras.layers import Dense
@@ -8,7 +13,7 @@ import multiprocessing as mp
 import time
 from keras.datasets import mnist
 import keras
-
+from collections import OrderedDict
 
 # Checked
 def define_model(population_size, neurons):
@@ -18,7 +23,7 @@ def define_model(population_size, neurons):
         model.add(Dense(neurons[1], activation='relu', use_bias=False, input_shape=(neurons[0],)))
         model.add(Dense(neurons[2], activation='relu', use_bias=False))
         model.add(Dense(neurons[3], activation='sigmoid', use_bias=False))
-        model.compile(loss='mean_squared_error', optimizer=SGD(), metrics=['accuracy'])
+        model.compile(loss='categorical_crossentropy', optimizer=SGD(), metrics=['accuracy'])
         models.append(model)
     return models
 
@@ -36,11 +41,11 @@ def define_single_model(neurons):
 # Checked
 def crossover_nodes_make2child(population, neurons, weights):
     temp = []
+    a = [weights[z].shape for z in range(0, len(weights))]
+    nm1 = [np.empty(a[z]) for z in range(0, len(a))]
+    nm2 = [np.empty(a[z]) for z in range(0, len(a))]
     for i in range(0, len(population) - 1, 2):
         models = define_model(2, neurons)
-        a = [weights[z].shape for z in range(0, len(weights))]
-        nm1 = [np.empty(a[z]) for z in range(0, len(a))]
-        nm2 = [np.empty(a[z]) for z in range(0, len(a))]
         m1 = copy.deepcopy(population[i].get_weights())
         m2 = copy.deepcopy(population[i + 1].get_weights())
         for j in range(0, len(neurons) - 1):
@@ -59,6 +64,7 @@ def crossover_nodes_make2child(population, neurons, weights):
         models[1].set_weights(nm2)
         temp.append(models[0])
         temp.append(models[1])
+        del models, m1, m2
     return temp
 
 
@@ -84,23 +90,21 @@ def mutate_nodes(population, neurons, number_of_mutation):
             # This is working
             m[layers_number][k][neurons_number] = m[layers_number][k][neurons_number] + random_number
     population.set_weights(m)
+    del m
     return population
 
 
-# Checked !!!!#Sort kon hatman#!!!!
+# Checked
 def selecting_for_pool(population, dicts):
     parent = []
     while len(parent) < len(population):
-        for p in population:
+        for p in reversed(population):
             if dicts[p][1] > np.random.uniform(0, 1) and len(parent) < len(population):
                 parent.append(p)
     return parent
 
 
-# Either we make sure that no two excact same parents get paired or
-# if it happens that two same parents get paired, crossover shuld not happen (cause their children will be the same and it would be a waste of time
-# and resource to allow additional wasteful crossover to happen, so the repeated parent must be copied twice into the premilienery
-# population that mighr undergoo mutation)
+# Checked (Each paired parents are different)
 def mating_pool(population, neurons, dicts, weights):
     paired_parents = []
     parents = selecting_for_pool(population, dicts)
@@ -111,7 +115,7 @@ def mating_pool(population, neurons, dicts, weights):
     lit_child = crossover_nodes_make2child(paired_parents, neurons, weights)
     return lit_child
 
-# !!!!#Sort kon hatman#!!!!
+
 def mutate_pool(population, neurons, num):
     for i in range(len(population)):
         if np.random.uniform(0, 1) < (1/len(population)):
@@ -126,7 +130,7 @@ def evaluation(population, x, y):
     # result of evaluation weights network
     evaluation_result = []
     for p in population:
-        evaluation_result.append(round(p.evaluate(x, y, verbose=0)[1], 5))
+        evaluation_result.append(round(p.evaluate(x, y, verbose=0, batch_size=60000)[1], 5))
     return evaluation_result
 
 
@@ -137,44 +141,119 @@ def probability(fitness):
 
 # Checked and Order is correct
 def multiprocess(pool, population, x_test, y_test):
-    evaluation_result = pool.starmap(Sequential.evaluate, ((p, x_test, y_test) for p in population))
+    evaluation_result = pool.starmap(Sequential.evaluate, ((p, x_test, y_test, 60000, 0) for p in population))
     return [e[1] for e in evaluation_result]
 
 
 pool = mp.Pool(4)
 
-x = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(1, 2, 3, 4))
-y = genfromtxt("E:\\Work\\GANN\\Data\\mydata.csv", delimiter=',', skip_header=1, usecols=(0,))
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
 
-y_test = y[:40000]
-x_test = x[:40000]
+x_train = x_train.reshape(60000, 784)
+x_test = x_test.reshape(10000, 784)
+x_train = x_train.astype('float32')
+x_test = x_test.astype('float32')
+x_train /= 255
+x_test /= 255
 
-y_train = y[40000:50000]
-x_train = x[40000:50000]
+
+# convert class vectors to binary class matrices
+y_train = keras.utils.to_categorical(y_train, 10)
+y_test = keras.utils.to_categorical(y_test, 10)
 
 generations = 100  # Number of generation algorithm run.
-pop_size = 4
-neurons = [4, 7, 10, 1]
-number_of_mutate_node = 2
+pop_size = 50
+neurons = [784, 512, 512, 10]
+number_of_mutate_node = 180
+number_of_child_generate = 1
+file = open('report.txt', 'w')
 
+print('The initialization started!')
 population = define_model(population_size=pop_size, neurons=neurons)
 sample_weights = population[0].get_weights()
+print('The initialization is DONE!')
 
 # fit_result = evaluation(population, x_test, y_test)
-fit_result = multiprocess(pool, population, x_test, y_test)
-
+print('The evaluation started!')
+fit_result = multiprocess(pool, population, x_train, y_train)
+print('The evaluation is DONE!')
 prob_pop = probability(fit_result)
+print('Creating the dictionary.')
 dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
+print('Dictionary Created!')
 
+for p in population:
+    if dicts[p][0] == np.min(fit_result):
+        worst = copy.deepcopy(p)
 
-for g in range(0, generations):
+gen_fit = []
+gen_child = []
+gen_mean = []
+gen_max = []
+gen_fit_file = open('gen_fit.txt', 'w')
+gen_child_file = open('gen_child.txt', 'w')
+gen_mean_file = open('gen_mean.txt', 'w')
+gen_max_file = open('gen_max.txt', 'w')
+converge_time = []
+run_time = []
+rs = time.time()
+g = 0
+# for g in range(0, generations):
+while True:
     print('The generation number is: ', g + 1)
-    children = mating_pool(list(dicts.keys()), neurons, dicts, sample_weights)
-    final_pop = mutate_pool(children, neurons, number_of_mutate_node)
-
+    file.write('\nThe generation number is:' + str(g + 1))
+    dicts = OrderedDict(sorted(dicts.items(), key=lambda x: x[1]))
+    cs = time.time()
+    new_pop = mating_pool(list(dicts.keys()), neurons, dicts, sample_weights)
+    final_pop = mutate_pool(new_pop, neurons, number_of_mutate_node)
+    ce = time.time()
+    converge_time.append(ce - cs)
     dicts.clear()
 
-    # fit_result = evaluation(final_pop, x_test, y_test)
-    fit_result = multiprocess(pool, final_pop, x_test, y_test)
+    fit_result = multiprocess(pool, final_pop, x_train, y_train)
     prob_pop = probability(fit_result)
-    dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
+    dicts = {final_pop[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(final_pop))}
+    print('The mean of fitness is:', np.mean(fit_result))
+    print('The best of fitness is:', np.max(fit_result))
+    file.write('\nThe mean of fitness is:' + str(np.mean(fit_result)))
+    file.write('\nThe best of fitness is:' + str(np.max(fit_result)))
+    file.flush()
+    gen_fit_file.write('\n' + str(fit_result))
+    gen_fit_file.flush()
+    gen_mean_file.write('\n' + str(np.mean(fit_result)))
+    gen_mean_file.flush()
+    gen_max_file.write('\n' + str(np.max(fit_result)))
+    gen_max_file.flush()
+    g += 1
+    # gen_fit.append(fit_result)
+    # gen_mean.append(np.mean(fit_result))
+    # gen_max.append(np.max(fit_result))
+    if np.max(fit_result) > 0.8:
+        break
+
+re = time.time()
+run_time.append(re-rs)
+
+# for item in gen_child:
+#     gen_child_file.write('\n'+str(item))
+# for item in gen_fit:
+#     gen_fit_file.write('\n'+str(item))
+# for item in gen_mean:
+#     gen_mean_file.write('\n'+str(item))
+# for item in gen_max:
+#     gen_max_file.write('\n'+str(item))
+
+file.write('\nStart of SGD')
+rs = time.time()
+while True:
+    call = worst.fit(x_train, y_train, batch_size=60000)
+    file.write(str(call.history['acc'][0])+'\n')
+    if call.history['acc'][0] > np.max(fit_result):
+        break
+
+re = time.time()
+run_time.append(re-rs)
+with open('time.txt', 'w') as timefile:
+    timefile.write('The run time of SGD is:'+str(run_time[1]))
+    timefile.write('\nThe run time of GA is:' + str(run_time[0]))
+    timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
