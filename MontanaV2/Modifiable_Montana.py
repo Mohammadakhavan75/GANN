@@ -171,6 +171,7 @@ gen_fit_file = open('gen_fit.txt', 'w')
 gen_child_file = open('gen_child.txt', 'w')
 gen_mean_file = open('gen_mean.txt', 'w')
 gen_max_file = open('gen_max.txt', 'w')
+timefile = open('time.txt', 'w')
 
 rs = time.time()
 iteration = 0
@@ -249,9 +250,8 @@ while iteration < 10:
 
     re = time.time()
     run_time.append(re-rs)
-    with open('time.txt', 'w') as timefile:
-        timefile.write('The run time of SGD is:'+str(run_time[1]))
-        timefile.write('\nThe run time of GA is:' + str(run_time[0]))
-        timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
-        timefile.write('\n**************\n**************\n**************\n')
-        timefile.flush()
+    timefile.write('The run time of SGD is:'+str(run_time[1]))
+    timefile.write('\nThe run time of GA is:' + str(run_time[0]))
+    timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
+    timefile.write('\n**************\n**************\n**************\n')
+    timefile.flush()
