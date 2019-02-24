@@ -167,104 +167,91 @@ neurons = [4, 7, 10, 1]
 number_of_mutate_node = 2
 
 file = open('Montana_Result.txt', 'w')
-print('The initialization started!')
-population = define_model(population_size=pop_size, neurons=neurons)
-print('The initialization is DONE!')
-sample_weights = population[0].get_weights()
-
-print('The evaluation started!')
-fit_result = multiprocess(pool, population, x_train, y_train)
-print('The evaluation is DONE!')
-prob_pop = probability(fit_result)
-print('Creating the dictionary.')
-dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
-print('Dictionary Created!')
-
-for p in population:
-    if dicts[p][0] == np.min(fit_result):
-        worst = copy.deepcopy(p)
-
-gen_fit = []
-gen_child = []
-gen_mean = []
-gen_max = []
 gen_fit_file = open('gen_fit.txt', 'w')
 gen_child_file = open('gen_child.txt', 'w')
 gen_mean_file = open('gen_mean.txt', 'w')
 gen_max_file = open('gen_max.txt', 'w')
-converge_time = []
-run_time = []
+
 rs = time.time()
-g = 0
-# for g in range(0, generations):
-while True:
-    pop_fit = []
-    print('The generation number is: ', g + 1)
-    file.write('\nThe generation number is:' + str(g + 1))
-    cs = time.time()
-    child = breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights)
-    child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
-    ce = time.time()
-    converge_time.append(ce-cs)
-    # Discarding
-    for p in list(dicts.keys()):
+iteration = 0
+while iteration < 10:
+    print('The initialization started!')
+    population = define_model(population_size=pop_size, neurons=neurons)
+    print('The initialization is DONE!')
+    sample_weights = population[0].get_weights()
+
+    print('The evaluation started!')
+    fit_result = multiprocess(pool, population, x_train, y_train)
+    print('The evaluation is DONE!')
+    prob_pop = probability(fit_result)
+    print('Creating the dictionary.')
+    dicts = {population[i]: [fit_result[i], prob_pop[i]] for i in range(0, len(population))}
+    print('Dictionary Created!')
+
+    for p in population:
         if dicts[p][0] == np.min(fit_result):
-            dicts = discard_individual(dicts, p)
-            fit_result.remove(np.min(fit_result))
+            worst = copy.deepcopy(p)
+    converge_time = []
+    run_time = []
+    g = 0
+    # for g in range(0, generations):
+    while True:
+        pop_fit = []
+        print('The generation number is: ', g + 1)
+        file.write('\nThe generation number is:' + str(g + 1))
+        cs = time.time()
+        child = breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights)
+        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
+        ce = time.time()
+        converge_time.append(ce-cs)
+        # Discarding
+        for p in list(dicts.keys()):
+            if dicts[p][0] == np.min(fit_result):
+                dicts = discard_individual(dicts, p)
+                fit_result.remove(np.min(fit_result))
+                break
+        print(child_values)
+        file.write('\nThe child values is:' + str(child_values))
+        fit_result.append(child_values[0])
+        dicts = insert_child(dicts, child, child_values)
+        # gen_child.append(dicts[child][0])
+        gen_child_file.write('\n' + str(dicts[child][0]))
+        # Updating Probabilities in Dictionary
+        for p in list(dicts.keys()):
+            dicts[p][1] = round(dicts[p][0] / np.sum([dicts[p][0] for p in list(dicts.keys())]), 5)
+            pop_fit.append(dicts[p][0])
+        print('The mean of fitness is:', np.mean(pop_fit))
+        print('The best of fitness is:', np.max(pop_fit))
+        file.write('\nThe mean of fitness is:' + str(np.mean(pop_fit)))
+        file.write('\nThe best of fitness is:' + str(np.max(pop_fit)))
+        file.flush()
+        gen_fit_file.write('\n' + str(pop_fit))
+        gen_fit_file.flush()
+        gen_mean_file.write('\n' + str(np.mean(pop_fit)))
+        gen_mean_file.flush()
+        gen_max_file.write('\n' + str(np.max(pop_fit)))
+        gen_max_file.flush()
+        g += 1
+        if np.max(pop_fit) > 0.8:
             break
-    print(child_values)
-    file.write('\nThe child values is:' + str(child_values))
-    fit_result.append(child_values[0])
-    dicts = insert_child(dicts, child, child_values)
-    # gen_child.append(dicts[child][0])
-    gen_child_file.write('\n' + str(dicts[child][0]))
-    # Updating Probabilities in Dictionary
-    for p in list(dicts.keys()):
-        dicts[p][1] = round(dicts[p][0] / np.sum([dicts[p][0] for p in list(dicts.keys())]), 5)
-        pop_fit.append(dicts[p][0])
-    print('The mean of fitness is:', np.mean(pop_fit))
-    print('The best of fitness is:', np.max(pop_fit))
-    file.write('\nThe mean of fitness is:' + str(np.mean(pop_fit)))
-    file.write('\nThe best of fitness is:' + str(np.max(pop_fit)))
-    file.flush()
-    gen_fit_file.write('\n' + str(pop_fit))
-    gen_fit_file.flush()
-    gen_mean_file.write('\n' + str(np.mean(pop_fit)))
-    gen_mean_file.flush()
-    gen_max_file.write('\n' + str(np.max(pop_fit)))
-    gen_max_file.flush()
-    # gen_fit.append(pop_fit)
-    # gen_mean.append(np.mean(pop_fit))
-    # gen_max.append(np.max(pop_fit))
-    g += 1
-    if np.max(pop_fit) > 0.8:
-        break
 
-re = time.time()
-run_time.append(re-rs)
+    re = time.time()
+    run_time.append(re-rs)
 
-# for item in gen_child:
-#     gen_child_file.write('\n'+str(item))
-# for item in gen_fit:
-#     gen_fit_file.write('\n'+str(item))
-# for item in gen_mean:
-#     gen_mean_file.write('\n'+str(item))
-# for item in gen_max:
-#     gen_max_file.write('\n'+str(item))
+    file.write('\nStart of SGD')
+    rs = time.time()
+    while True:
+        call = worst.fit(x_train, y_train, batch_size=60000)
+        file.write(str(call.history['acc'][0])+'\n')
+        file.flush()
+        if call.history['acc'][0] > np.max(pop_fit):
+            break
 
-file.write('\nStart of SGD')
-rs = time.time()
-while True:
-    call = worst.fit(x_train, y_train, batch_size=60000)
-    file.write(str(call.history['acc'][0])+'\n')
-    file.flush()
-    if call.history['acc'][0] > np.max(pop_fit):
-        break
-
-re = time.time()
-run_time.append(re-rs)
-with open('time.txt', 'w') as timefile:
-    timefile.write('The run time of SGD is:'+str(run_time[1]))
-    timefile.write('\nThe run time of GA is:' + str(run_time[0]))
-    timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
-    timefile.flush()
+    re = time.time()
+    run_time.append(re-rs)
+    with open('time.txt', 'w') as timefile:
+        timefile.write('The run time of SGD is:'+str(run_time[1]))
+        timefile.write('\nThe run time of GA is:' + str(run_time[0]))
+        timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
+        timefile.write('\n**************\n**************\n**************\n')
+        timefile.flush()
