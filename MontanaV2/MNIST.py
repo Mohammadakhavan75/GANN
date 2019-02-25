@@ -127,7 +127,7 @@ def breeding(population, neurons, dicts, num, weights):
     return lit_child
 
 
-def child_val(child, x, y, dicts, population , file):
+def child_val(child, x, y, dicts, population ):
     fit_result = []
     for p in population:
         fit_result.append(dicts[p][0])
@@ -189,10 +189,7 @@ for p in population:
     if dicts[p][0] == np.min(fit_result):
         worst = copy.deepcopy(p)
 
-gen_fit = []
-gen_child = []
-gen_mean = []
-gen_max = []
+
 gen_fit_file = open('gen_fit.txt', 'w')
 gen_child_file = open('gen_child.txt', 'w')
 gen_mean_file = open('gen_mean.txt', 'w')
@@ -202,21 +199,20 @@ run_time = []
 rs = time.time()
 g = 0
 
-# for g in range(0, generations):
 while True:
     pop_fit = []
     print('The generation number is: ', g + 1)
     file.write('\nThe generation number is:'+str(g + 1))
     children = []
+    child_values = []
     cs = time.time()
     for c in range(number_of_child_generate):
         children.append(breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights))
 
     for child in children:
-        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
-        fit_result.append(child_values[0])
-        print(child_values)
+        child_values.append(child_val(child, x_train, y_train, dicts, list(dicts.keys())))
         file.write('\nThe child values is:'+str(child_values))
+    print(child_values)
     ce = time.time()
     converge_time.append(ce - cs)
     # Discarding
@@ -226,8 +222,9 @@ while True:
                 fit_result.remove(np.min(fit_result))
                 dicts = discard_individual(dicts, p)
                 break
-    for child in children:
-        dicts = insert_child(dicts, child, child_values)
+    for i in range(len(children)):
+        dicts = insert_child(dicts, children[i], child_values[i])
+        fit_result.append(child_values[i][0])
     # Updating Probabilities in Dictionary
     for p in list(dicts.keys()):
         dicts[p][1] = round(dicts[p][0] / np.sum([dicts[p][0] for p in list(dicts.keys())]), 5)
@@ -243,9 +240,6 @@ while True:
     gen_mean_file.flush()
     gen_max_file.write('\n' + str(np.max(pop_fit)))
     gen_max_file.flush()
-    # gen_fit.append(pop_fit)
-    # gen_mean.append(np.mean(pop_fit))
-    # gen_max.append(np.max(pop_fit))
     g += 1
     if np.max(pop_fit) > 0.8:
         break
