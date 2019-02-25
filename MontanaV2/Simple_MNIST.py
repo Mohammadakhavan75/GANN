@@ -188,10 +188,6 @@ for p in population:
     if dicts[p][0] == np.min(fit_result):
         worst = copy.deepcopy(p)
 
-gen_fit = []
-gen_child = []
-gen_mean = []
-gen_max = []
 gen_fit_file = open('gen_fit.txt', 'w')
 gen_child_file = open('gen_child.txt', 'w')
 gen_mean_file = open('gen_mean.txt', 'w')
@@ -200,7 +196,6 @@ converge_time = []
 run_time = []
 rs = time.time()
 g = 0
-# for g in range(0, generations):
 while True:
     pop_fit = []
     print('The generation number is: ', g + 1)
@@ -237,24 +232,12 @@ while True:
     gen_mean_file.flush()
     gen_max_file.write('\n' + str(np.max(pop_fit)))
     gen_max_file.flush()
-    # gen_fit.append(pop_fit)
-    # gen_mean.append(np.mean(pop_fit))
-    # gen_max.append(np.max(pop_fit))
     g += 1
     if np.max(pop_fit) > 0.8:
         break
 
 re = time.time()
 run_time.append(re-rs)
-
-# for item in gen_child:
-#     gen_child_file.write('\n'+str(item))
-# for item in gen_fit:
-#     gen_fit_file.write('\n'+str(item))
-# for item in gen_mean:
-#     gen_mean_file.write('\n'+str(item))
-# for item in gen_max:
-#     gen_max_file.write('\n'+str(item))
 
 file.write('\nStart of SGD')
 rs = time.time()
