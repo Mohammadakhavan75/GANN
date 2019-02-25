@@ -11,7 +11,6 @@ from numpy import genfromtxt
 import copy
 import multiprocessing as mp
 import time
-import pandas as pd
 
 
 # Checked
@@ -126,7 +125,7 @@ def breeding(population, neurons, dicts, num, weights):
     return lit_child
 
 
-def child_val(child, x, y, dicts, population, file):
+def child_val(child, x, y, dicts, population):
     fit_result = []
     for p in population:
         fit_result.append(dicts[p][0])
@@ -202,7 +201,7 @@ while iteration < 10:
         file.write('\nThe generation number is:' + str(g + 1))
         cs = time.time()
         child = breeding(list(dicts.keys()), neurons, dicts, number_of_mutate_node, sample_weights)
-        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()), file)
+        child_values = child_val(child, x_train, y_train, dicts, list(dicts.keys()))
         ce = time.time()
         converge_time.append(ce-cs)
         # Discarding
@@ -247,11 +246,11 @@ while iteration < 10:
         file.flush()
         if call.history['acc'][0] > np.max(pop_fit):
             break
-
+    iteration += 1
     re = time.time()
     run_time.append(re-rs)
     timefile.write('The run time of SGD is:'+str(run_time[1]))
     timefile.write('\nThe run time of GA is:' + str(run_time[0]))
     timefile.write('\nThe convergance time of GA is:' + str(np.sum(converge_time)))
-    timefile.write('\n**************\n**************\n**************\n')
+    timefile.write('\n**************\n****  '+str(iteration)+'  ****\n**************\n')
     timefile.flush()
