@@ -1,6 +1,6 @@
 # GACNN: Training Deep Convolutional Neural Networks with Genetic Algorithm
 
-This repository contains the code and data for the paper ["GACNN: Training Deep Convolutional Neural Networks with Genetic Algorithm"](https://arxiv.org/abs/1909.13354) by Parsa Esfahanian and Mohammad Akhavan.
+This repository contains the code and data for the paper ["GACNN: Training Deep Convolutional Neural Networks with Genetic Algorithm"](https://arxiv.org/abs/1909.13354) by Parsa Esfahanian and [Mohammad Akhavan](https://scholar.google.com/citations?user=IK2-tNoAAAAJ&hl=en).
 
 ## Abstract
 
